@@ -16,8 +16,11 @@ EMPTY = 0
 DIRT = 1
 STONE = 2
 
-# Indestructible stone floor at the very bottom of the world.
-STONE_FLOOR_ROWS = 3
+# Stone density: 100% near the bottom, fading out with height. The level where
+# the solid-stone region begins is jagged (uneven), not a flat line.
+STONE_FULL_ROW = ROWS - 4       # average row where stone becomes 100% solid
+STONE_FULL_JITTER = 4           # +/- tiles of unevenness on that boundary
+STONE_GRADIENT_ROWS = 16        # tiles over which stone probability fades to 0
 
 # Vertical band (in tiles) where the surface line is allowed to wander.
 SURFACE_MIN_ROW = ROWS // 3
@@ -39,6 +42,7 @@ SPEAR_DAMAGE = 35
 BOMB_MAX_DAMAGE = 50       # at the blast center
 BOMB_RADIUS_TILES = 9      # crater / blast radius in tiles
 BOMB_KNOCKBACK = 70.0      # horizontal displacement at blast center (px)
+HIT_KNOCKBACK = 90.0       # random shove when an archer is struck by a spear (px)
 BOMB_FUSE = 4.0            # seconds before an airborne bomb self-detonates
 
 MIN_SPAWN_GAP = 400        # min horizontal distance between the two archers

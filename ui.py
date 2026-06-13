@@ -31,7 +31,7 @@ def draw_splash(screen):
 
 class Menu:
     def __init__(self):
-        labels = [("Play vs AI", "ai"),
+        labels = [("Play", "play"),
                   ("Quit", "quit")]
         self.buttons = []
         bw, bh, gap = 360, 64, 24
@@ -98,8 +98,9 @@ def draw_aim_indicator(screen, archer, mouse_pos, terrain):
     vel = W.velocity_from_angle_power(angle, power, kind)
 
     pts, _, _ = W.simulate_path(start, vel, kind, terrain, max_points=120)
-    # Dotted trajectory preview.
-    for i, p in enumerate(pts):
+    # Show only the first ~30% of the arc, just to indicate the direction.
+    cutoff = max(2, int(len(pts) * 0.3))
+    for i, p in enumerate(pts[:cutoff]):
         if i % 2 == 0:
             pygame.draw.circle(screen, C.COL_AIM, (int(p[0]), int(p[1])), 2)
 

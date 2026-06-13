@@ -34,9 +34,7 @@ class Terrain:
         row_idx = np.arange(C.ROWS)[:, None]
         mask = row_idx >= heights[None, :]
         self.grid[mask] = C.DIRT
-        self._add_stone(heights)
-        # Indestructible stone floor seals the bottom of the world.
-        self.grid[C.ROWS - C.STONE_FLOOR_ROWS:, :] = C.STONE
+        self._add_stone()
         self._top_rows = heights  # cached top solid row per column
         self.redraw_all()
 
@@ -63,19 +61,24 @@ class Terrain:
         heights = (C.SURFACE_MIN_ROW + profile * band).astype(np.int32)
         return np.clip(heights, C.SURFACE_MIN_ROW, C.SURFACE_MAX_ROW)
 
-    def _add_stone(self, heights):
+    def _add_stone(self):
+        """Stone is 100% solid near the bottom and gets progressively rarer with
+        height. The row where it becomes fully solid is jagged per column."""
         rng = np.random.default_rng()
-        n_blobs = rng.integers(3, 6)
-        rows = np.arange(C.ROWS)[:, None]
-        cols = np.arange(C.COLS)[None, :]
-        for _ in range(n_blobs):
-            cx = rng.integers(0, C.COLS)
-            cy = rng.integers(int(C.ROWS * 0.55), C.ROWS - 2)
-            rx = rng.integers(6, 16)
-            ry = rng.integers(4, 10)
-            ellipse = ((cols - cx) / rx) ** 2 + ((rows - cy) / ry) ** 2 <= 1.0
-            # Only turn already-solid dirt into stone (keep stone underground).
-            self.grid[ellipse & (self.grid == C.DIRT)] = C.STONE
+        # Jagged per-column boundary where stone reaches 100%.
+        jitter = rng.normal(0, 1.0, C.COLS)
+        k = 7
+        jitter = np.convolve(jitter, np.ones(k) / k, mode="same")
+        if np.abs(jitter).max() > 0:
+            jitter = jitter / np.abs(jitter).max() * C.STONE_FULL_JITTER
+        full_row = (C.STONE_FULL_ROW + jitter).astype(np.float64)[None, :]
+
+        rows = np.arange(C.ROWS)[:, None].astype(np.float64)
+        grad = float(C.STONE_GRADIENT_ROWS)
+        # Probability 0 above (full_row - grad), ramping to 1 at/below full_row.
+        prob = np.clip((rows - (full_row - grad)) / grad, 0.0, 1.0)
+        stone = (rng.random((C.ROWS, C.COLS)) < prob) & (self.grid == C.DIRT)
+        self.grid[stone] = C.STONE
 
     # --- Rendering ---
     def redraw_all(self):

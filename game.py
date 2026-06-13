@@ -119,6 +119,10 @@ class Match:
         p = self.projectile
         if p.outcome == "archer" and p.hit_archer:
             p.hit_archer.take_damage(p.weapon.damage)
+            # A struck archer is shoved a random distance forward or backward.
+            direction = random.choice((-1, 1))
+            push = direction * random.uniform(0.5, 1.0) * C.HIT_KNOCKBACK
+            p.hit_archer.x = max(20, min(C.SCREEN_W - 20, p.hit_archer.x + push))
         elif p.outcome == "exploded":
             self._explode(p.impact, p.weapon)
         self.projectile = None

@@ -33,7 +33,7 @@ def main():
                 action = menu.handle_event(event)
                 if action == "quit":
                     running = False
-                elif action == "ai":
+                elif action == "play":
                     match = Match()
                     state = MATCH
             elif state == MATCH:
