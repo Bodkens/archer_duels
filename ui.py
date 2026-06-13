@@ -32,7 +32,6 @@ def draw_splash(screen):
 class Menu:
     def __init__(self):
         labels = [("Play vs AI", "ai"),
-                  ("Play vs Player", "pvp"),
                   ("Quit", "quit")]
         self.buttons = []
         bw, bh, gap = 360, 64, 24
@@ -80,10 +79,9 @@ def draw_hud(screen, p1, p2, current, message):
     _hp_bar(screen, p1, 20, 26)
     _hp_bar(screen, p2, C.SCREEN_W - 20, 26, align_right=True)
 
-    # Selected weapon + ammo for the current archer.
-    slot = current.selected
-    who = "AI" if current.is_ai else "Player"
-    info = f"{who} turn  |  {slot.weapon.name} (x{slot.ammo})"
+    # Random weapon rolled for the current archer this turn.
+    who = "Enemy" if current.is_ai else "Your"
+    info = f"{who} turn  |  Weapon: {current.weapon.name}"
     screen.blit(font(24, bold=True).render(info, True, C.COL_TEXT),
                 (C.SCREEN_W // 2 - 150, 24))
 
@@ -96,7 +94,7 @@ def draw_aim_indicator(screen, archer, mouse_pos, terrain):
     angle, power = W.aim_from_drag(start, mouse_pos)
     if power <= 0:
         return
-    kind = archer.selected.weapon.kind
+    kind = archer.weapon.kind
     vel = W.velocity_from_angle_power(angle, power, kind)
 
     pts, _, _ = W.simulate_path(start, vel, kind, terrain, max_points=120)
@@ -111,6 +109,14 @@ def draw_aim_indicator(screen, archer, mouse_pos, terrain):
     pygame.draw.rect(screen, C.COL_HP_BG, (bx, by, 60, 8), border_radius=3)
     pygame.draw.rect(screen, C.COL_EXPLOSION, (bx, by, int(60 * frac), 8),
                      border_radius=3)
+
+
+def draw_floating_warning(screen, archer, text):
+    surf = font(22, bold=True).render(text, True, C.COL_WARN)
+    rect = surf.get_rect(center=(int(archer.x), archer.rect.top - 30))
+    bg = rect.inflate(14, 8)
+    pygame.draw.rect(screen, (0, 0, 0), bg, border_radius=5)
+    screen.blit(surf, rect)
 
 
 def draw_game_over(screen, winner_text):

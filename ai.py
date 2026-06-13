@@ -21,16 +21,7 @@ class EnemyAI:
         """Return (angle, power, hits) that best lands on the target, or None.
         `hits` is True when the simulated shot actually strikes the target."""
         tcenter = target.center()
-        if kind == W.PISTOL:
-            angle = math.atan2(tcenter[1] - start[1], tcenter[0] - start[0])
-            vel = W.velocity_from_angle_power(angle, 0, kind)
-            _, end, hit = W.simulate_path(start, vel, kind, terrain,
-                                          archers=[target], ignore=None)
-            if hit is target:
-                return angle, C.MAX_POWER, True
-            return angle, C.MAX_POWER, False
-
-        # Arc weapons: brute-force angle/power candidates through the shared
+        # Brute-force angle/power candidates through the shared
         # integrator and keep the closest landing (preferring a direct hit).
         best = None
         best_score = 1e18
@@ -51,40 +42,22 @@ class EnemyAI:
             return None
         return best[0], best[1], best_score < C.TILE * 2.5
 
-    def _best_weapon(self, shooter, target, terrain):
-        """Pick the loadout slot (with ammo) most likely to hit; return
-        (slot_index, angle, power, hits) or None."""
-        start = shooter.muzzle_pos()
-        fallback = None
-        for i, slot in enumerate(shooter.loadout):
-            if slot.ammo <= 0:
-                continue
-            sol = self.aim_solution(start, target, slot.weapon.kind, terrain)
-            if sol is None:
-                continue
-            angle, power, hits = sol
-            if hits:
-                return i, angle, power, True
-            if fallback is None:
-                fallback = (i, angle, power, False)
-        return fallback
-
     def take_turn(self, shooter, target, terrain):
         """Return an action dict: {'type':'shoot', angle, power} or
-        {'type':'walk', dx}."""
+        {'type':'walk', dx}. The weapon is whatever was rolled this turn."""
         tpos = target.center()
         if self.locked and self.locked_pos is not None:
             if self._dist(tpos, self.locked_pos) > C.AI_MOVE_THRESHOLD:
                 self.locked = False  # player moved -> range in again
 
-        pick = self._best_weapon(shooter, target, terrain)
-        if pick is None:
+        sol = self.aim_solution(shooter.muzzle_pos(), target,
+                                shooter.weapon.kind, terrain)
+        if sol is None:
             # No usable solution: shuffle toward the target and pass.
             return {"type": "walk", "dx": math.copysign(C.WALK_DISTANCE,
                                                         tpos[0] - shooter.x)}
 
-        idx, angle, power, _ = pick
-        shooter.select_index(idx)
+        angle, power, _ = sol
 
         if not self.locked and random.random() >= C.AIM_HIT_CHANCE:
             # Deliberate near miss while ranging in.

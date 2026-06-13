@@ -16,9 +16,12 @@ EMPTY = 0
 DIRT = 1
 STONE = 2
 
+# Indestructible stone floor at the very bottom of the world.
+STONE_FLOOR_ROWS = 3
+
 # Vertical band (in tiles) where the surface line is allowed to wander.
 SURFACE_MIN_ROW = ROWS // 3
-SURFACE_MAX_ROW = ROWS - 4
+SURFACE_MAX_ROW = ROWS - 6
 
 # --- Physics ---
 GRAVITY = 900.0            # px/s^2 for the spear arc
@@ -26,7 +29,6 @@ BOMB_GRAVITY_MULT = 1.6    # bomb is heavier -> falls faster / steeper arc
 BOMB_DRAG = 0.6            # horizontal air drag for the bomb (per second)
 POWER_TO_SPEED = 6.0       # drag pixels -> launch speed multiplier
 MAX_POWER = 180.0          # max drag length considered (pixels)
-PISTOL_SPEED = 1400.0      # constant bullet speed (px/s)
 
 # --- Gameplay ---
 MAX_HP = 100
@@ -34,13 +36,10 @@ WALK_DISTANCE = 120        # max pixels an archer may move per walk turn
 WALK_SPEED = 160.0         # px/s while walking
 
 SPEAR_DAMAGE = 35
-PISTOL_DAMAGE = 25
 BOMB_MAX_DAMAGE = 50       # at the blast center
 BOMB_RADIUS_TILES = 9      # crater / blast radius in tiles
 BOMB_KNOCKBACK = 70.0      # horizontal displacement at blast center (px)
 BOMB_FUSE = 4.0            # seconds before an airborne bomb self-detonates
-
-WEAPON_AMMO = 3            # ammo per loadout slot
 
 MIN_SPAWN_GAP = 400        # min horizontal distance between the two archers
 
@@ -59,8 +58,8 @@ COL_ENEMY = (210, 80, 80)
 COL_TEXT = (245, 245, 245)
 COL_TEXT_DIM = (180, 180, 180)
 COL_SPEAR = (200, 180, 120)
-COL_PISTOL = (250, 240, 90)
 COL_BOMB = (40, 40, 40)
+COL_WARN = (255, 90, 90)
 COL_HP_BG = (60, 60, 60)
 COL_HP_GOOD = (80, 200, 90)
 COL_HP_LOW = (220, 70, 70)

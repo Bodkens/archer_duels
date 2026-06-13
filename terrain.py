@@ -35,6 +35,8 @@ class Terrain:
         mask = row_idx >= heights[None, :]
         self.grid[mask] = C.DIRT
         self._add_stone(heights)
+        # Indestructible stone floor seals the bottom of the world.
+        self.grid[C.ROWS - C.STONE_FLOOR_ROWS:, :] = C.STONE
         self._top_rows = heights  # cached top solid row per column
         self.redraw_all()
 

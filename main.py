@@ -33,8 +33,8 @@ def main():
                 action = menu.handle_event(event)
                 if action == "quit":
                     running = False
-                elif action in ("ai", "pvp"):
-                    match = Match(action)
+                elif action == "ai":
+                    match = Match()
                     state = MATCH
             elif state == MATCH:
                 result = match.handle_event(event)

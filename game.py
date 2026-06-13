@@ -30,12 +30,11 @@ class Explosion:
 
 
 class Match:
-    def __init__(self, mode):
-        self.mode = mode            # "ai" or "pvp"
+    def __init__(self):
         self.terrain = Terrain()
         self.p1, self.p2 = self._spawn_archers()
         self.archers = [self.p1, self.p2]
-        self.ai = EnemyAI() if mode == "ai" else None
+        self.ai = EnemyAI()
 
         self.current_idx = 0
         self.projectile = None
@@ -44,6 +43,7 @@ class Match:
         self.finished = False
         self.winner = None
         self.message = ""
+        self.warn_timer = 0.0
 
         self.dragging = False
         self.walked = False
@@ -63,8 +63,7 @@ class Match:
             if x2 - x1 >= C.MIN_SPAWN_GAP:
                 break
         p1 = Archer(x1, 0, C.COL_PLAYER, is_ai=False, facing=1)
-        is_ai_p2 = self.mode == "ai"
-        p2 = Archer(x2, 0, C.COL_ENEMY, is_ai=is_ai_p2, facing=-1)
+        p2 = Archer(x2, 0, C.COL_ENEMY, is_ai=True, facing=-1)
         p1.ground(self.terrain)
         p2.ground(self.terrain)
         return p1, p2
@@ -82,12 +81,13 @@ class Match:
         self.current.start_turn()
         self.walked = False
         self.dragging = False
+        self.warn_timer = 0.0
         self.ai_timer = 0.7 if self.current.is_ai else 0.0
         if self.current.is_ai:
             self.message = "Enemy is taking aim..."
         else:
-            self.message = ("Drag from your archer to aim & throw  |  "
-                            "1/2/3 switch weapon  |  A/D move, Enter to end turn")
+            self.message = (f"Weapon this turn: {self.current.weapon.name}  |  "
+                            "Drag to aim & throw  OR  A/D to move (ends your turn)")
 
     def _end_turn(self):
         for a in self.archers:
@@ -96,21 +96,14 @@ class Match:
                 self.phase = "gameover"
                 winner = self.p1 if self.p2.hp <= 0 else self.p2
                 self.winner = winner
-                if winner is self.p1:
-                    self.winner_text = "Player 1 Wins!" if self.mode == "pvp" else "You Win!"
-                else:
-                    self.winner_text = ("Player 2 Wins!" if self.mode == "pvp"
-                                        else "You Lose!")
+                self.winner_text = "You Win!" if winner is self.p1 else "You Lose!"
                 return
         self.current_idx = 1 - self.current_idx
         self.phase = "aim"
         self._begin_turn()
 
     def _fire(self, angle, power):
-        weapon = self.current.selected.weapon
-        if self.current.selected.ammo <= 0:
-            return
-        self.current.selected.ammo -= 1
+        weapon = self.current.weapon
         self.current.facing = 1 if math.cos(angle) >= 0 else -1
         vel = W.velocity_from_angle_power(angle, power, weapon.kind)
         self.projectile = W.Projectile(self.current.muzzle_pos(), vel, weapon,
@@ -172,17 +165,13 @@ class Match:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 return "menu"
-            if event.key in (pygame.K_1, pygame.K_2, pygame.K_3) and not self.walked:
-                self.current.select_index(event.key - pygame.K_1)
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                 self._end_turn()
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1 and not self.walked and self.current.has_ammo():
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.walked:
+                self.warn_timer = 1.5  # decided to walk -> shooting is locked out
+            else:
                 self.dragging = True
-            elif event.button == 4 and not self.walked:
-                self.current.switch_weapon(-1)
-            elif event.button == 5 and not self.walked:
-                self.current.switch_weapon(1)
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if self.dragging:
                 self.dragging = False
@@ -205,8 +194,10 @@ class Match:
             moved = self.current.walk(direction * C.WALK_SPEED * dt, self.terrain)
             if moved > 0:
                 self.walked = True
-                self.message = ("Moved this turn - press Enter to end turn "
-                                "(no throwing after moving)")
+                self.message = "Walking... (you can no longer throw this turn)"
+                # Turn ends automatically once the free-move budget is spent.
+                if self.current.moved_distance >= C.WALK_DISTANCE - 0.5:
+                    self._end_turn()
 
     def _ai_turn(self, dt):
         self.ai_timer -= dt
@@ -222,6 +213,8 @@ class Match:
     # --- Update / draw ---
     def update(self, dt):
         self.explosions = [e for e in self.explosions if e.update(dt)]
+        if self.warn_timer > 0:
+            self.warn_timer -= dt
 
         if self.phase == "aim":
             if self.current.is_ai:
@@ -246,6 +239,10 @@ class Match:
         if (self.phase == "aim" and not self.current.is_ai and self.dragging):
             ui.draw_aim_indicator(screen, self.current, pygame.mouse.get_pos(),
                                   self.terrain)
+
+        if self.warn_timer > 0:
+            ui.draw_floating_warning(screen, self.current,
+                                     "You can't shoot if you decided to walk")
 
         ui.draw_hud(screen, self.p1, self.p2, self.current, self.message)
         if self.phase == "gameover":

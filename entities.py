@@ -1,4 +1,4 @@
-"""Archer entity: position, hp, walking, loadout, placeholder drawing."""
+"""Archer entity: position, hp, walking, per-turn weapon, placeholder drawing."""
 
 import random
 import math
@@ -11,17 +11,6 @@ BODY_W = 24
 BODY_H = 40
 
 
-class WeaponSlot:
-    def __init__(self, weapon, ammo):
-        self.weapon = weapon
-        self.ammo = ammo
-
-
-def random_loadout():
-    kinds = [random.choice(W.ALL_KINDS) for _ in range(3)]
-    return [WeaponSlot(W.WEAPONS[k], C.WEAPON_AMMO) for k in kinds]
-
-
 class Archer:
     def __init__(self, x, y, color, is_ai=False, facing=1):
         self.x = float(x)      # feet center x
@@ -30,8 +19,7 @@ class Archer:
         self.color = color
         self.is_ai = is_ai
         self.facing = facing
-        self.loadout = random_loadout()
-        self.selected_idx = 0
+        self.weapon = W.WEAPONS[random.choice(W.ALL_KINDS)]
         self.moved_distance = 0.0
 
     # --- Geometry ---
@@ -52,30 +40,6 @@ class Archer:
     def circle_overlap(self, cx, cy, radius_px):
         px, py = self.center()
         return math.hypot(px - cx, py - cy) <= radius_px
-
-    # --- Weapons ---
-    @property
-    def selected(self):
-        return self.loadout[self.selected_idx]
-
-    def switch_weapon(self, direction):
-        self.selected_idx = (self.selected_idx + direction) % len(self.loadout)
-
-    def select_index(self, idx):
-        if 0 <= idx < len(self.loadout):
-            self.selected_idx = idx
-
-    def has_ammo(self):
-        return self.selected.ammo > 0
-
-    def first_with_ammo(self):
-        for i, slot in enumerate(self.loadout):
-            if slot.ammo > 0:
-                return i
-        return None
-
-    def out_of_ammo(self):
-        return all(slot.ammo <= 0 for slot in self.loadout)
 
     # --- Movement ---
     def ground(self, terrain):
@@ -108,12 +72,8 @@ class Archer:
 
     def start_turn(self):
         self.moved_distance = 0.0
-        if self.out_of_ammo():
-            return
-        if not self.has_ammo():
-            idx = self.first_with_ammo()
-            if idx is not None:
-                self.selected_idx = idx
+        # A fresh random weapon (spear or bomb) is rolled each turn.
+        self.weapon = W.WEAPONS[random.choice(W.ALL_KINDS)]
 
     # --- Drawing (placeholder; swap rect for sprite later) ---
     def draw(self, screen, active=False):

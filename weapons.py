@@ -6,7 +6,6 @@ import pygame
 import config as C
 
 # Weapon kinds
-PISTOL = "pistol"
 SPEAR = "spear"
 BOMB = "bomb"
 
@@ -21,12 +20,11 @@ class WeaponType:
 
 
 WEAPONS = {
-    PISTOL: WeaponType(PISTOL, "Pistol", C.PISTOL_DAMAGE, C.COL_PISTOL, 4),
     SPEAR: WeaponType(SPEAR, "Spear", C.SPEAR_DAMAGE, C.COL_SPEAR, 16),
     BOMB: WeaponType(BOMB, "Bomb", C.BOMB_MAX_DAMAGE, C.COL_BOMB, 7),
 }
 
-ALL_KINDS = [PISTOL, SPEAR, BOMB]
+ALL_KINDS = [SPEAR, BOMB]
 
 
 def _out_of_field(pos):
@@ -39,19 +37,18 @@ def step_physics(pos, vel, kind, dt):
     projectile, the trajectory preview, and the AI solver."""
     x, y = pos
     vx, vy = vel
-    if kind == SPEAR:
-        vy += C.GRAVITY * dt
-    elif kind == BOMB:
+    if kind == BOMB:
         vy += C.GRAVITY * C.BOMB_GRAVITY_MULT * dt
         vx *= (1.0 - C.BOMB_DRAG * dt)
-    # PISTOL: no gravity, constant velocity.
+    else:  # SPEAR
+        vy += C.GRAVITY * dt
     x += vx * dt
     y += vy * dt
     return (x, y), (vx, vy)
 
 
 def velocity_from_angle_power(angle, power, kind):
-    speed = C.PISTOL_SPEED if kind == PISTOL else power * C.POWER_TO_SPEED
+    speed = power * C.POWER_TO_SPEED
     return (math.cos(angle) * speed, math.sin(angle) * speed)
 
 
@@ -150,10 +147,7 @@ class Projectile:
         self.impact = (self.x, self.y)
 
     def draw(self, screen):
-        if self.kind == PISTOL:
-            pygame.draw.circle(screen, self.weapon.color,
-                               (int(self.x), int(self.y)), self.weapon.size)
-        elif self.kind == BOMB:
+        if self.kind == BOMB:
             pygame.draw.circle(screen, self.weapon.color,
                                (int(self.x), int(self.y)), self.weapon.size)
             pygame.draw.circle(screen, (200, 60, 40),
