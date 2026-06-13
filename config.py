@@ -16,18 +16,12 @@ EMPTY = 0
 DIRT = 1
 STONE = 2
 
-# Stone density: 100% near the bottom, fading out with height. The level where
-# the solid-stone region begins is jagged (uneven), not a flat line.
-STONE_FULL_ROW = ROWS - 4       # average row where stone becomes 100% solid
-STONE_FULL_JITTER = 4           # +/- tiles of unevenness on that boundary
-STONE_GRADIENT_ROWS = 16        # tiles over which stone probability fades to 0
-
 # Vertical band (in tiles) where the surface line is allowed to wander.
 SURFACE_MIN_ROW = ROWS // 3
-SURFACE_MAX_ROW = ROWS - 6
+SURFACE_MAX_ROW = ROWS - 4
 
 # --- Physics ---
-GRAVITY = 900.0            # px/s^2 for the spear arc
+GRAVITY = 900.0            # px/s^2 for the arrow arc
 BOMB_GRAVITY_MULT = 1.6    # bomb is heavier -> falls faster / steeper arc
 BOMB_DRAG = 0.6            # horizontal air drag for the bomb (per second)
 POWER_TO_SPEED = 6.0       # drag pixels -> launch speed multiplier
@@ -35,15 +29,17 @@ MAX_POWER = 180.0          # max drag length considered (pixels)
 
 # --- Gameplay ---
 MAX_HP = 100
-WALK_DISTANCE = 120        # max pixels an archer may move per walk turn
 WALK_SPEED = 160.0         # px/s while walking
+WALK_DISTANCE = 160.0      # max pixels an archer may move per turn
 
-SPEAR_DAMAGE = 35
+ARROW_DAMAGE = 35
 BOMB_MAX_DAMAGE = 50       # at the blast center
 BOMB_RADIUS_TILES = 9      # crater / blast radius in tiles
 BOMB_KNOCKBACK = 70.0      # horizontal displacement at blast center (px)
-HIT_KNOCKBACK = 90.0       # random shove when an archer is struck by a spear (px)
 BOMB_FUSE = 4.0            # seconds before an airborne bomb self-detonates
+
+SAFE_GROUND_ROWS = 8       # permanent bottom layer, never destroyed by bombs
+STONE_START_ROW = ROWS - SAFE_GROUND_ROWS - 12
 
 MIN_SPAWN_GAP = 400        # min horizontal distance between the two archers
 
@@ -61,9 +57,8 @@ COL_PLAYER = (70, 130, 220)
 COL_ENEMY = (210, 80, 80)
 COL_TEXT = (245, 245, 245)
 COL_TEXT_DIM = (180, 180, 180)
-COL_SPEAR = (200, 180, 120)
+COL_ARROW = (200, 180, 120)
 COL_BOMB = (40, 40, 40)
-COL_WARN = (255, 90, 90)
 COL_HP_BG = (60, 60, 60)
 COL_HP_GOOD = (80, 200, 90)
 COL_HP_LOW = (220, 70, 70)

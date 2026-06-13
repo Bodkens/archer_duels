@@ -1,4 +1,4 @@
-"""Archer entity: position, hp, walking, per-turn weapon, placeholder drawing."""
+"""Archer entity: position, hp, walking, random weapon and animated drawing."""
 
 import random
 import math
@@ -11,6 +11,15 @@ BODY_W = 24
 BODY_H = 40
 
 
+class WeaponSlot:
+    def __init__(self, weapon):
+        self.weapon = weapon
+
+
+def random_loadout():
+    return [WeaponSlot(W.WEAPONS[k]) for k in W.ALL_KINDS]
+
+
 class Archer:
     def __init__(self, x, y, color, is_ai=False, facing=1):
         self.x = float(x)      # feet center x
@@ -19,8 +28,10 @@ class Archer:
         self.color = color
         self.is_ai = is_ai
         self.facing = facing
-        self.weapon = W.WEAPONS[random.choice(W.ALL_KINDS)]
+        self.loadout = random_loadout()
+        self.selected_idx = 0
         self.moved_distance = 0.0
+        self.anim_t = random.random() * 10.0
 
     # --- Geometry ---
     @property
@@ -41,23 +52,33 @@ class Archer:
         px, py = self.center()
         return math.hypot(px - cx, py - cy) <= radius_px
 
+    # --- Weapons ---
+    @property
+    def selected(self):
+        return self.loadout[self.selected_idx]
+
+    def switch_weapon(self, direction):
+        self.selected_idx = (self.selected_idx + direction) % len(self.loadout)
+
+    def select_index(self, idx):
+        if 0 <= idx < len(self.loadout):
+            self.selected_idx = idx
+
     # --- Movement ---
     def ground(self, terrain):
         self.y = terrain.surface_y(self.x)
 
     def walk(self, dx, terrain):
-        """Move horizontally, limited per turn, stepping over slopes, then settle."""
+        """Move horizontally, capped by the per-turn movement budget."""
         remaining = C.WALK_DISTANCE - self.moved_distance
         if remaining <= 0:
             return 0.0
-        step = max(-remaining, min(remaining, dx))
-        target_x = self.x + step
+        if abs(dx) > remaining:
+            dx = math.copysign(remaining, dx)
+        target_x = self.x + dx
         target_x = max(BODY_W, min(C.SCREEN_W - BODY_W, target_x))
 
         ground_y = terrain.surface_y(target_x)
-        # Block if the step would require climbing a tall wall.
-        if ground_y < self.y - BODY_H * 0.6:
-            return 0.0
 
         actual = abs(target_x - self.x)
         self.x = target_x
@@ -72,21 +93,58 @@ class Archer:
 
     def start_turn(self):
         self.moved_distance = 0.0
-        # A fresh random weapon (spear or bomb) is rolled each turn.
-        self.weapon = W.WEAPONS[random.choice(W.ALL_KINDS)]
+        self.selected_idx = random.randrange(len(self.loadout))
 
-    # --- Drawing (placeholder; swap rect for sprite later) ---
+    def update(self, dt):
+        self.anim_t += dt
+
+    # --- Drawing ---
     def draw(self, screen, active=False):
         r = self.rect
-        pygame.draw.rect(screen, self.color, r, border_radius=4)
-        # Head
+        bob = math.sin(self.anim_t * 5.0) * 1.5
+        hip = (r.centerx, r.bottom - 20 + bob)
+        shoulder = (r.centerx, r.top + 13 + bob)
+        foot_y = r.bottom
+        leg_col = (35, 32, 36)
+        arm_col = (230, 195, 145)
+        bow_col = (96, 58, 32)
+        string_col = (235, 230, 205)
+
+        # Legs
+        pygame.draw.line(screen, leg_col, hip, (r.centerx - 10, foot_y), 5)
+        pygame.draw.line(screen, leg_col, hip, (r.centerx + 10, foot_y), 5)
+
+        # Body cloak
+        cloak = [
+            (r.centerx - 13, r.top + 22 + bob),
+            (r.centerx + 13, r.top + 22 + bob),
+            (r.centerx + 10, r.bottom - 14),
+            (r.centerx - 10, r.bottom - 14),
+        ]
+        pygame.draw.polygon(screen, self.color, cloak)
+        pygame.draw.polygon(screen, (25, 28, 34), cloak, 2)
+
+        # Head and hood
         head_r = 9
-        head_c = (r.centerx, r.top - head_r + 2)
-        pygame.draw.circle(screen, self.color, head_c, head_r)
+        head_c = (r.centerx, r.top - head_r + 6 + bob)
+        pygame.draw.circle(screen, self.color, head_c, head_r + 4)
+        pygame.draw.circle(screen, (232, 192, 145), head_c, head_r)
         pygame.draw.circle(screen, (20, 20, 20), head_c, head_r, 2)
-        # Facing indicator (a small "bow" nub)
-        nub_x = r.centerx + self.facing * (BODY_W // 2)
-        pygame.draw.circle(screen, (20, 20, 20), (nub_x, r.centery), 3)
+
+        # Bow, arm, and tiny idle motion.
+        bow_x = r.centerx + self.facing * 22
+        bow_mid = (bow_x, shoulder[1] + 2)
+        bow_rect = pygame.Rect(0, 0, 22, 58)
+        bow_rect.center = bow_mid
+        if self.facing > 0:
+            pygame.draw.arc(screen, bow_col, bow_rect, -1.2, 1.2, 4)
+        else:
+            pygame.draw.arc(screen, bow_col, bow_rect, math.pi - 1.2,
+                            math.pi + 1.2, 4)
+        pygame.draw.line(screen, string_col, (bow_x, bow_mid[1] - 27),
+                         (bow_x, bow_mid[1] + 27), 1)
+        pygame.draw.line(screen, arm_col, shoulder, bow_mid, 4)
+
         if active:
             pygame.draw.rect(screen, (255, 255, 255), r.inflate(8, 14), 2,
                              border_radius=6)

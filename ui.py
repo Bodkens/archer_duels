@@ -23,7 +23,7 @@ def _center_text(screen, text, size, y, color=C.COL_TEXT, bold=False):
 
 
 def draw_splash(screen):
-    screen.fill((20, 24, 34))
+    draw_menu_background(screen, pygame.time.get_ticks() / 1000.0)
     _center_text(screen, C.TITLE, 84, C.SCREEN_H // 2 - 20, bold=True)
     _center_text(screen, "Bowmasters-style artillery duel", 26,
                  C.SCREEN_H // 2 + 50, C.COL_TEXT_DIM)
@@ -31,7 +31,7 @@ def draw_splash(screen):
 
 class Menu:
     def __init__(self):
-        labels = [("Play", "play"),
+        labels = [("Play", "ai"),
                   ("Quit", "quit")]
         self.buttons = []
         bw, bh, gap = 360, 64, 24
@@ -50,7 +50,7 @@ class Menu:
         return None
 
     def draw(self, screen):
-        screen.fill((26, 30, 42))
+        draw_menu_background(screen, pygame.time.get_ticks() / 1000.0)
         _center_text(screen, C.TITLE, 72, C.SCREEN_H // 4, bold=True)
         mouse = pygame.mouse.get_pos()
         for rect, label, _ in self.buttons:
@@ -79,28 +79,32 @@ def draw_hud(screen, p1, p2, current, message):
     _hp_bar(screen, p1, 20, 26)
     _hp_bar(screen, p2, C.SCREEN_W - 20, 26, align_right=True)
 
-    # Random weapon rolled for the current archer this turn.
-    who = "Enemy" if current.is_ai else "Your"
-    info = f"{who} turn  |  Weapon: {current.weapon.name}"
+    # Random weapon assigned for the current turn.
+    slot = current.selected
+    who = "AI" if current.is_ai else "Player"
+    info = f"{who} turn  |  Random weapon: {slot.weapon.name}"
     screen.blit(font(24, bold=True).render(info, True, C.COL_TEXT),
-                (C.SCREEN_W // 2 - 150, 24))
+                (C.SCREEN_W // 2 - 210, 24))
 
     if message:
         _center_text(screen, message, 22, C.SCREEN_H - 28, C.COL_TEXT_DIM)
 
 
-def draw_aim_indicator(screen, archer, mouse_pos, terrain):
+def draw_aim_indicator(screen, archer, mouse_pos, terrain, archers=None):
     start = archer.muzzle_pos()
     angle, power = W.aim_from_drag(start, mouse_pos)
     if power <= 0:
         return
-    kind = archer.weapon.kind
+    kind = archer.selected.weapon.kind
     vel = W.velocity_from_angle_power(angle, power, kind)
 
-    pts, _, _ = W.simulate_path(start, vel, kind, terrain, max_points=120)
-    # Show only the first ~30% of the arc, just to indicate the direction.
-    cutoff = max(2, int(len(pts) * 0.3))
-    for i, p in enumerate(pts[:cutoff]):
+    pts, _, _ = W.simulate_path(start, vel, kind, terrain,
+                                archers=archers, ignore=archer,
+                                max_points=160)
+    # Dotted trajectory preview. It uses the exact same physics as the shot,
+    # but stops before the final impact so the answer is not too obvious.
+    visible_count = max(5, int(len(pts) * 0.78))
+    for i, p in enumerate(pts[:visible_count]):
         if i % 2 == 0:
             pygame.draw.circle(screen, C.COL_AIM, (int(p[0]), int(p[1])), 2)
 
@@ -112,14 +116,6 @@ def draw_aim_indicator(screen, archer, mouse_pos, terrain):
                      border_radius=3)
 
 
-def draw_floating_warning(screen, archer, text):
-    surf = font(22, bold=True).render(text, True, C.COL_WARN)
-    rect = surf.get_rect(center=(int(archer.x), archer.rect.top - 30))
-    bg = rect.inflate(14, 8)
-    pygame.draw.rect(screen, (0, 0, 0), bg, border_radius=5)
-    screen.blit(surf, rect)
-
-
 def draw_game_over(screen, winner_text):
     overlay = pygame.Surface((C.SCREEN_W, C.SCREEN_H), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 160))
@@ -127,3 +123,60 @@ def draw_game_over(screen, winner_text):
     _center_text(screen, winner_text, 72, C.SCREEN_H // 2 - 30, bold=True)
     _center_text(screen, "Click or press any key to return to menu", 26,
                  C.SCREEN_H // 2 + 40, C.COL_TEXT_DIM)
+
+
+def draw_confirm_exit(screen):
+    overlay = pygame.Surface((C.SCREEN_W, C.SCREEN_H), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 170))
+    screen.blit(overlay, (0, 0))
+    box = pygame.Rect(0, 0, 520, 230)
+    box.center = (C.SCREEN_W // 2, C.SCREEN_H // 2)
+    pygame.draw.rect(screen, (30, 36, 48), box, border_radius=12)
+    pygame.draw.rect(screen, (180, 195, 220), box, 2, border_radius=12)
+    _center_text(screen, "Quit to menu?", 32, box.y + 56, C.COL_TEXT, bold=True)
+    _center_text(screen, "Enter - quit     Esc - continue", 22,
+                 box.y + 100, C.COL_TEXT_DIM)
+
+    yes, no = confirm_exit_buttons()
+    mouse = pygame.mouse.get_pos()
+    for rect, label in ((yes, "Quit"), (no, "Stay")):
+        hover = rect.collidepoint(mouse)
+        pygame.draw.rect(screen, C.COL_BUTTON_HOVER if hover else C.COL_BUTTON,
+                         rect, border_radius=8)
+        pygame.draw.rect(screen, (160, 175, 200), rect, 2, border_radius=8)
+        surf = font(24, bold=True).render(label, True, C.COL_TEXT)
+        screen.blit(surf, surf.get_rect(center=rect.center))
+    return yes, no
+
+
+def confirm_exit_buttons():
+    box = pygame.Rect(0, 0, 520, 230)
+    box.center = (C.SCREEN_W // 2, C.SCREEN_H // 2)
+    yes = pygame.Rect(box.x + 82, box.y + 150, 150, 48)
+    no = pygame.Rect(box.right - 232, box.y + 150, 150, 48)
+    return yes, no
+
+
+def draw_menu_background(screen, t):
+    top = (32, 47, 80)
+    bottom = (92, 130, 150)
+    for y in range(C.SCREEN_H):
+        k = y / C.SCREEN_H
+        col = tuple(int(top[i] * (1 - k) + bottom[i] * k) for i in range(3))
+        pygame.draw.line(screen, col, (0, y), (C.SCREEN_W, y))
+
+    pygame.draw.circle(screen, (244, 188, 87), (C.SCREEN_W - 170, 105), 52)
+    for i in range(7):
+        x = (i * 230 + int(t * (14 + i))) % (C.SCREEN_W + 160) - 80
+        y = 95 + (i % 3) * 42
+        pygame.draw.ellipse(screen, (238, 242, 232), (x, y, 90, 24))
+        pygame.draw.ellipse(screen, (228, 235, 230), (x + 42, y - 8, 82, 28))
+
+    for layer, color in enumerate(((67, 91, 94), (49, 74, 79), (36, 60, 65))):
+        base = C.SCREEN_H - 170 + layer * 42
+        points = [(-40, C.SCREEN_H), (-40, base)]
+        for x in range(-40, C.SCREEN_W + 100, 120):
+            peak = base - 70 - ((x // 120 + layer) % 3) * 24
+            points.extend([(x + 60, peak), (x + 120, base)])
+        points.append((C.SCREEN_W + 80, C.SCREEN_H))
+        pygame.draw.polygon(screen, color, points)

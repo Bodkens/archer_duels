@@ -21,7 +21,7 @@ class EnemyAI:
         """Return (angle, power, hits) that best lands on the target, or None.
         `hits` is True when the simulated shot actually strikes the target."""
         tcenter = target.center()
-        # Brute-force angle/power candidates through the shared
+        # Arc weapons: brute-force angle/power candidates through the shared
         # integrator and keep the closest landing (preferring a direct hit).
         best = None
         best_score = 1e18
@@ -42,22 +42,31 @@ class EnemyAI:
             return None
         return best[0], best[1], best_score < C.TILE * 2.5
 
+    def _aim_current_weapon(self, shooter, target, terrain):
+        """Aim the randomly assigned weapon for this turn."""
+        start = shooter.muzzle_pos()
+        sol = self.aim_solution(start, target, shooter.selected.weapon.kind,
+                                terrain)
+        if sol is None:
+            return None
+        angle, power, hits = sol
+        return angle, power, hits
+
     def take_turn(self, shooter, target, terrain):
         """Return an action dict: {'type':'shoot', angle, power} or
-        {'type':'walk', dx}. The weapon is whatever was rolled this turn."""
+        {'type':'walk', dx}."""
         tpos = target.center()
         if self.locked and self.locked_pos is not None:
             if self._dist(tpos, self.locked_pos) > C.AI_MOVE_THRESHOLD:
                 self.locked = False  # player moved -> range in again
 
-        sol = self.aim_solution(shooter.muzzle_pos(), target,
-                                shooter.weapon.kind, terrain)
-        if sol is None:
+        pick = self._aim_current_weapon(shooter, target, terrain)
+        if pick is None:
             # No usable solution: shuffle toward the target and pass.
-            return {"type": "walk", "dx": math.copysign(C.WALK_DISTANCE,
+            return {"type": "walk", "dx": math.copysign(C.WALK_SPEED * 0.75,
                                                         tpos[0] - shooter.x)}
 
-        angle, power, _ = sol
+        angle, power, _ = pick
 
         if not self.locked and random.random() >= C.AIM_HIT_CHANCE:
             # Deliberate near miss while ranging in.

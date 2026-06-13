@@ -1,4 +1,4 @@
-"""Weapon definitions and projectile physics (pistol / spear / bomb)."""
+"""Weapon definitions and projectile physics (arrow / bomb)."""
 
 import math
 import pygame
@@ -6,7 +6,7 @@ import pygame
 import config as C
 
 # Weapon kinds
-SPEAR = "spear"
+ARROW = "arrow"
 BOMB = "bomb"
 
 
@@ -20,11 +20,11 @@ class WeaponType:
 
 
 WEAPONS = {
-    SPEAR: WeaponType(SPEAR, "Spear", C.SPEAR_DAMAGE, C.COL_SPEAR, 16),
+    ARROW: WeaponType(ARROW, "Arrow", C.ARROW_DAMAGE, C.COL_ARROW, 18),
     BOMB: WeaponType(BOMB, "Bomb", C.BOMB_MAX_DAMAGE, C.COL_BOMB, 7),
 }
 
-ALL_KINDS = [SPEAR, BOMB]
+ALL_KINDS = [ARROW, BOMB]
 
 
 def _out_of_field(pos):
@@ -37,11 +37,11 @@ def step_physics(pos, vel, kind, dt):
     projectile, the trajectory preview, and the AI solver."""
     x, y = pos
     vx, vy = vel
-    if kind == BOMB:
+    if kind == ARROW:
+        vy += C.GRAVITY * dt
+    elif kind == BOMB:
         vy += C.GRAVITY * C.BOMB_GRAVITY_MULT * dt
         vx *= (1.0 - C.BOMB_DRAG * dt)
-    else:  # SPEAR
-        vy += C.GRAVITY * dt
     x += vx * dt
     y += vy * dt
     return (x, y), (vx, vy)
@@ -152,10 +152,20 @@ class Projectile:
                                (int(self.x), int(self.y)), self.weapon.size)
             pygame.draw.circle(screen, (200, 60, 40),
                                (int(self.x), int(self.y)), self.weapon.size, 2)
-        else:  # SPEAR drawn as an oriented line
+            fuse_tip = (
+                int(self.x - math.cos(self.angle) * 8),
+                int(self.y - math.sin(self.angle) * 8),
+            )
+            pygame.draw.line(screen, (230, 160, 70), (int(self.x), int(self.y)),
+                             fuse_tip, 2)
+        else:  # ARROW drawn as an oriented shaft with a point and fletching.
             L = self.weapon.size
             dx = math.cos(self.angle) * L
             dy = math.sin(self.angle) * L
             pygame.draw.line(screen, self.weapon.color,
                              (self.x - dx, self.y - dy),
                              (self.x + dx, self.y + dy), 3)
+            tip = (self.x + dx, self.y + dy)
+            left = (self.x + dx * 0.45 - dy * 0.22, self.y + dy * 0.45 + dx * 0.22)
+            right = (self.x + dx * 0.45 + dy * 0.22, self.y + dy * 0.45 - dx * 0.22)
+            pygame.draw.polygon(screen, (235, 235, 225), [tip, left, right])

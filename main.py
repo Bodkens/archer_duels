@@ -7,7 +7,7 @@ import config as C
 import ui
 from game import Match
 
-SPLASH, MENU, MATCH, = "splash", "menu", "match"
+SPLASH, MENU, MATCH = "splash", "menu", "match"
 
 
 def main():
@@ -28,12 +28,15 @@ def main():
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                if state == MATCH and match is not None:
+                    match.request_exit()
+                else:
+                    running = False
             elif state == MENU:
                 action = menu.handle_event(event)
                 if action == "quit":
                     running = False
-                elif action == "play":
+                elif action == "ai":
                     match = Match()
                     state = MATCH
             elif state == MATCH:
