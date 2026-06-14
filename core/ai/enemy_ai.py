@@ -3,8 +3,8 @@
 import math
 import random
 
-import config as C
-import weapons as W
+from core import config as C
+from core.weapons import velocity_from_angle_power, simulate_path
 
 
 class EnemyAI:
@@ -28,9 +28,9 @@ class EnemyAI:
         for ang_deg in range(-170, -5, 5):
             angle = math.radians(ang_deg)
             for power in range(50, int(C.MAX_POWER) + 1, 12):
-                vel = W.velocity_from_angle_power(angle, power, kind)
-                pts, end, hit = W.simulate_path(start, vel, kind, terrain,
-                                                archers=[target])
+                vel = velocity_from_angle_power(angle, power, kind)
+                pts, end, hit = simulate_path(start, vel, kind, terrain,
+                                              archers=[target])
                 if hit is target:
                     return angle, float(power), True
                 landing = pts[-1]

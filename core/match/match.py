@@ -2,39 +2,29 @@
 
 import random
 import math
+
 import pygame
 
-import config as C
-import weapons as W
-from terrain import Terrain
-from entities import Archer
-from ai import EnemyAI
-import ui
-
-
-class Explosion:
-    def __init__(self, x, y, radius):
-        self.x, self.y, self.radius = x, y, radius
-        self.t = 0.0
-        self.dur = 0.4
-
-    def update(self, dt):
-        self.t += dt
-        return self.t < self.dur
-
-    def draw(self, screen):
-        frac = self.t / self.dur
-        r = int(self.radius * (0.4 + 0.6 * frac))
-        col = (255, int(200 - 120 * frac), int(60 * (1 - frac)))
-        pygame.draw.circle(screen, col, (int(self.x), int(self.y)), max(2, r))
+from core import config as C
+from core import ui
+from core.terrain import Terrain
+from core.sprites import Player, Enemy, Arrow, Bomb
+from core.ai import EnemyAI
+from core.weapons import velocity_from_angle_power, aim_from_drag, ARROW
+from .explosion import Explosion
 
 
 class Match:
-    def __init__(self, mode="ai"):
-        self.mode = "ai"
+    def __init__(self, sprite_group=None):
+        self.sprites = sprite_group
+        if self.sprites is not None:
+            self.sprites.empty()
+
         self.terrain = Terrain()
         self.p1, self.p2 = self._spawn_archers()
         self.archers = [self.p1, self.p2]
+        if self.sprites is not None:
+            self.sprites.add(self.p1, self.p2)
         self.ai = EnemyAI()
 
         self.current_idx = 0
@@ -43,6 +33,7 @@ class Match:
         self.phase = "aim"          # aim | resolving | gameover
         self.finished = False
         self.winner = None
+        self.winner_text = ""
         self.message = ""
 
         self.dragging = False
@@ -64,8 +55,8 @@ class Match:
             x2 = random.randint(C.SCREEN_W // 2 + 60, C.SCREEN_W - margin)
             if x2 - x1 >= C.MIN_SPAWN_GAP:
                 break
-        p1 = Archer(x1, 0, C.COL_PLAYER, is_ai=False, facing=1)
-        p2 = Archer(x2, 0, C.COL_ENEMY, is_ai=True, facing=-1)
+        p1 = Player(x1, 0, facing=1)
+        p2 = Enemy(x2, 0, facing=-1)
         p1.ground(self.terrain)
         p2.ground(self.terrain)
         return p1, p2
@@ -106,9 +97,11 @@ class Match:
     def _fire(self, angle, power):
         weapon = self.current.selected.weapon
         self.current.facing = 1 if math.cos(angle) >= 0 else -1
-        vel = W.velocity_from_angle_power(angle, power, weapon.kind)
-        self.projectile = W.Projectile(self.current.muzzle_pos(), vel, weapon,
-                                       self.current)
+        vel = velocity_from_angle_power(angle, power, weapon.kind)
+        cls = Arrow if weapon.kind == ARROW else Bomb
+        self.projectile = cls(self.current.muzzle_pos(), vel, weapon, self.current)
+        if self.sprites is not None:
+            self.sprites.add(self.projectile)
         self.shooter = self.current
         self.ai_target = self.opponent
         self.target_hp_before = self.ai_target.hp
@@ -189,8 +182,8 @@ class Match:
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if self.dragging:
                 self.dragging = False
-                angle, power = W.aim_from_drag(self.current.muzzle_pos(),
-                                               event.pos)
+                angle, power = aim_from_drag(self.current.muzzle_pos(),
+                                             event.pos)
                 if power >= 10.0:
                     self._fire(angle, power)
         return None

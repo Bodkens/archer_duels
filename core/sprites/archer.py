@@ -1,27 +1,25 @@
-"""Archer entity: position, hp, walking, random weapon and animated drawing."""
+"""Archer: position, hp, walking, per-turn weapon and animated drawing.
+
+This is the shared base for the human Player and the AI Enemy. It is an
+``AnimatedSprite``: when a spritesheet is supplied it plays frames, otherwise it
+falls back to the hand-drawn vector archer in ``draw_vector``."""
 
 import random
 import math
+
 import pygame
 
-import config as C
-import weapons as W
+from core import config as C
+from core.weapons import random_loadout
+from .animated_sprite import AnimatedSprite
 
 BODY_W = 24
 BODY_H = 40
 
 
-class WeaponSlot:
-    def __init__(self, weapon):
-        self.weapon = weapon
-
-
-def random_loadout():
-    return [WeaponSlot(W.WEAPONS[k]) for k in W.ALL_KINDS]
-
-
-class Archer:
-    def __init__(self, x, y, color, is_ai=False, facing=1):
+class Archer(AnimatedSprite):
+    def __init__(self, x, y, color, is_ai=False, facing=1, frames=None):
+        super().__init__(frames=frames, fps=8)
         self.x = float(x)      # feet center x
         self.y = float(y)      # feet (bottom) y
         self.hp = C.MAX_HP
@@ -32,10 +30,10 @@ class Archer:
         self.selected_idx = 0
         self.moved_distance = 0.0
         self.anim_t = random.random() * 10.0
+        self.rect = self.body_rect()
 
     # --- Geometry ---
-    @property
-    def rect(self):
+    def body_rect(self):
         return pygame.Rect(int(self.x - BODY_W / 2), int(self.y - BODY_H),
                            BODY_W, BODY_H)
 
@@ -43,7 +41,7 @@ class Archer:
         return (self.x, self.y - BODY_H)
 
     def hit_test(self, point):
-        return self.rect.collidepoint(point)
+        return self.body_rect().collidepoint(point)
 
     def center(self):
         return (self.x, self.y - BODY_H / 2)
@@ -67,6 +65,7 @@ class Archer:
     # --- Movement ---
     def ground(self, terrain):
         self.y = terrain.surface_y(self.x)
+        self.rect = self.body_rect()
 
     def walk(self, dx, terrain):
         """Move horizontally, capped by the per-turn movement budget."""
@@ -86,6 +85,7 @@ class Archer:
         self.moved_distance += actual
         if dx != 0:
             self.facing = 1 if dx > 0 else -1
+        self.rect = self.body_rect()
         return actual
 
     def take_damage(self, amount):
@@ -97,10 +97,24 @@ class Archer:
 
     def update(self, dt):
         self.anim_t += dt
+        self.animate(dt)
+        self.rect = self.body_rect()
 
     # --- Drawing ---
     def draw(self, screen, active=False):
-        r = self.rect
+        if self.image is not None:
+            img = self.image
+            if self.facing < 0:
+                img = pygame.transform.flip(img, True, False)
+            screen.blit(img, self.body_rect())
+        else:
+            self.draw_vector(screen)
+        if active:
+            pygame.draw.rect(screen, (255, 255, 255),
+                             self.body_rect().inflate(8, 14), 2, border_radius=6)
+
+    def draw_vector(self, screen):
+        r = self.body_rect()
         bob = math.sin(self.anim_t * 5.0) * 1.5
         hip = (r.centerx, r.bottom - 20 + bob)
         shoulder = (r.centerx, r.top + 13 + bob)
@@ -144,7 +158,3 @@ class Archer:
         pygame.draw.line(screen, string_col, (bow_x, bow_mid[1] - 27),
                          (bow_x, bow_mid[1] + 27), 1)
         pygame.draw.line(screen, arm_col, shoulder, bow_mid, 4)
-
-        if active:
-            pygame.draw.rect(screen, (255, 255, 255), r.inflate(8, 14), 2,
-                             border_radius=6)

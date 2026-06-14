@@ -1,5 +1,23 @@
 """Central tunable constants for Archer Duels."""
 
+import os
+
+# --- Assets ---
+# assets/ lives next to the core/ package (one level up from this file).
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+BACKGROUND_IMAGE = "background.png"
+
+# Optional spritesheets / tilesets. Leave as None to use the built-in vector /
+# colour fallback. Drop a PNG into assets/ and point these at it to switch on
+# real artwork without touching any other code.
+PLAYER_SHEET = None        # e.g. "player_sheet.png"
+PLAYER_FRAME = (24, 40)    # (frame_w, frame_h) inside PLAYER_SHEET
+ENEMY_SHEET = None
+ENEMY_FRAME = (24, 40)
+ARROW_IMAGE = None         # single sprite, rotated to the flight angle
+BOMB_IMAGE = None
+TILES_IMAGE = None         # one row of TILE-sized cells: [EMPTY, DIRT, STONE]
+
 # --- Display ---
 SCREEN_W = 1280
 SCREEN_H = 720

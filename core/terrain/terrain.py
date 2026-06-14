@@ -1,9 +1,16 @@
-"""Procedural tile-grid terrain, collision queries, destruction, rendering."""
+"""Procedural tile-grid terrain: collision queries, destruction, rendering.
+
+The visible ground is a numpy grid of material ids baked once into a single
+Surface (fast to blit). The static background image sits behind it. Tiles are
+data, not sprites: collisions are grid queries (see ``solid_at`` / ``surface_y``
+/ ``destroy_circle``), not sprite-vs-sprite checks."""
 
 import numpy as np
 import pygame
 
-import config as C
+from core import config as C
+from core.assets import load_image
+from .tileset import Tileset
 
 
 class Terrain:
@@ -11,57 +18,17 @@ class Terrain:
         self.grid = np.zeros((C.ROWS, C.COLS), dtype=np.uint8)
         self.surface = pygame.Surface((C.SCREEN_W, C.SCREEN_H)).convert()
         self.background = self._make_background()
-        self.clouds = self._make_cloud_sprites()
+        self.tileset = Tileset(C.TILES_IMAGE) if C.TILES_IMAGE else None
         self.generate()
 
     def _make_background(self):
-        bg = pygame.Surface((C.SCREEN_W, C.SCREEN_H)).convert()
-        top = (111, 171, 219)
-        horizon = (220, 229, 204)
-        for y in range(C.SCREEN_H):
-            k = y / C.SCREEN_H
-            col = tuple(int(top[i] * (1 - k) + horizon[i] * k) for i in range(3))
-            pygame.draw.line(bg, col, (0, y), (C.SCREEN_W, y))
-
-        pygame.draw.circle(bg, (248, 204, 102), (118, 92), 44)
-        pygame.draw.circle(bg, (255, 229, 151), (118, 92), 28)
-        self._draw_mountains(bg, C.SCREEN_H - 260, (101, 139, 143), 150)
-        self._draw_mountains(bg, C.SCREEN_H - 210, (78, 118, 121), 120)
-        self._draw_mountains(bg, C.SCREEN_H - 165, (58, 99, 99), 96)
-        pygame.draw.rect(bg, (159, 183, 135), (0, C.SCREEN_H - 145, C.SCREEN_W, 145))
-        for x in range(0, C.SCREEN_W, 42):
-            shade = (130 + (x // 42) % 3 * 10, 166, 112)
-            pygame.draw.line(bg, shade, (x, C.SCREEN_H - 145),
-                             (x + 22, C.SCREEN_H), 2)
-        return bg
-
-    def _draw_mountains(self, surface, base_y, color, step):
-        points = [(-80, C.SCREEN_H), (-80, base_y)]
-        for x in range(-80, C.SCREEN_W + step, step):
-            peak = base_y - 80 - ((x // step) % 4) * 24
-            points.extend([(x + step // 2, peak), (x + step, base_y)])
-        points.append((C.SCREEN_W + 80, C.SCREEN_H))
-        pygame.draw.polygon(surface, color, points)
-
-    def _make_cloud_sprites(self):
-        clouds = []
-        for i in range(6):
-            surf = pygame.Surface((150, 56), pygame.SRCALPHA)
-            pygame.draw.ellipse(surf, (255, 255, 248, 190), (6, 24, 82, 24))
-            pygame.draw.ellipse(surf, (255, 255, 248, 210), (38, 10, 82, 34))
-            pygame.draw.ellipse(surf, (238, 246, 244, 185), (76, 22, 68, 24))
-            clouds.append({
-                "image": surf,
-                "x": float((i * 240) % (C.SCREEN_W + 180) - 120),
-                "y": 65 + (i % 3) * 42,
-                "speed": 10 + i * 2.5,
-            })
-        return clouds
+        """Static background image scaled to the screen."""
+        img = load_image(C.BACKGROUND_IMAGE, alpha=False)
+        return pygame.transform.scale(img, (C.SCREEN_W, C.SCREEN_H))
 
     def generate(self):
         self.grid[:] = C.EMPTY
         heights = self._generate_heights()
-        cols = np.arange(C.COLS)
         # Fill dirt from each column's surface row down to the bottom.
         row_idx = np.arange(C.ROWS)[:, None]
         mask = row_idx >= heights[None, :]
@@ -127,6 +94,8 @@ class Terrain:
                 rect = (c * C.TILE, r * C.TILE, C.TILE, C.TILE)
                 if mat == C.EMPTY:
                     self.surface.blit(self.background, (c * C.TILE, r * C.TILE), rect)
+                elif self.tileset is not None:
+                    self.surface.blit(self.tileset.tile(mat), (rect[0], rect[1]))
                 elif mat == C.STONE:
                     self.surface.fill(C.COL_STONE, rect)
                     fleck = 18 if (r + c) % 2 == 0 else -10
@@ -146,18 +115,6 @@ class Terrain:
 
     def draw(self, screen):
         screen.blit(self.surface, (0, 0))
-        self._draw_ambient_sprites(screen)
-
-    def _draw_ambient_sprites(self, screen):
-        t = pygame.time.get_ticks() / 1000.0
-        for cloud in self.clouds:
-            x = (cloud["x"] + t * cloud["speed"]) % (C.SCREEN_W + 220) - 160
-            screen.blit(cloud["image"], (x, cloud["y"]))
-        for i in range(5):
-            x = (220 + i * 190 + t * 34) % (C.SCREEN_W + 80) - 40
-            y = 100 + (i % 2) * 38 + np.sin(t * 2 + i) * 5
-            pygame.draw.arc(screen, (42, 55, 62), (x, y, 18, 10), 0.1, 2.7, 2)
-            pygame.draw.arc(screen, (42, 55, 62), (x + 16, y, 18, 10), 0.4, 3.0, 2)
 
     # --- Queries ---
     def in_bounds(self, px, py):
