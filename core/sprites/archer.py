@@ -10,16 +10,28 @@ import math
 import pygame
 
 from core import config as C
-from core.weapons import random_loadout
+from core.weapons import random_loadout, BOMB
 from .animated_sprite import AnimatedSprite
 
 BODY_W = 24
 BODY_H = 40
 
+# Spritesheet row per animation state.
+ROW_IDLE_BOW = 0
+ROW_IDLE_BOMB = 1
+ROW_AIM_BOW = 2
+ROW_AIM_BOMB = 3
+ROW_MOVE = 4
+
 
 class Archer(AnimatedSprite):
-    def __init__(self, x, y, color, is_ai=False, facing=1, frames=None):
-        super().__init__(frames=frames, fps=8)
+    def __init__(self, x, y, color, is_ai=False, facing=1, rows=None):
+        # Scale every frame down to the archer's body size at load time.
+        scaled = None
+        if rows:
+            scaled = [[pygame.transform.smoothscale(f, (BODY_W, BODY_H))
+                       for f in row] for row in rows]
+        super().__init__(rows=scaled, fps=C.SPRITE_ANIM_FPS)
         self.x = float(x)      # feet center x
         self.y = float(y)      # feet (bottom) y
         self.hp = C.MAX_HP
@@ -30,6 +42,9 @@ class Archer(AnimatedSprite):
         self.selected_idx = 0
         self.moved_distance = 0.0
         self.anim_t = random.random() * 10.0
+        # Animation state, set each frame by the Match.
+        self.aiming = False
+        self.moving = False
         self.rect = self.body_rect()
 
     # --- Geometry ---
@@ -95,8 +110,18 @@ class Archer(AnimatedSprite):
         self.moved_distance = 0.0
         self.selected_idx = random.randrange(len(self.loadout))
 
+    def _current_row(self):
+        """Pick the spritesheet row from weapon + aiming/moving state."""
+        if self.moving:
+            return ROW_MOVE
+        is_bomb = self.selected.weapon.kind == BOMB
+        if self.aiming:
+            return ROW_AIM_BOMB if is_bomb else ROW_AIM_BOW
+        return ROW_IDLE_BOMB if is_bomb else ROW_IDLE_BOW
+
     def update(self, dt):
         self.anim_t += dt
+        self.row_index = self._current_row()
         self.animate(dt)
         self.rect = self.body_rect()
 

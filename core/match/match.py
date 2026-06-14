@@ -220,11 +220,30 @@ class Match:
             self._end_turn()
 
     # --- Update / draw ---
+    def _update_anim_states(self):
+        """Tell each archer which animation to play (idle/aim/move by weapon)."""
+        for a in self.archers:
+            a.aiming = False
+            a.moving = False
+        if self.phase != "aim":
+            return
+        cur = self.current
+        if cur.is_ai:
+            cur.aiming = True            # AI is taking aim during its turn
+        elif self.dragging:
+            cur.aiming = True            # human is dragging to throw
+        else:
+            keys = pygame.key.get_pressed()
+            if (keys[pygame.K_a] or keys[pygame.K_LEFT]
+                    or keys[pygame.K_d] or keys[pygame.K_RIGHT]):
+                cur.moving = True
+
     def update(self, dt):
         if self.confirm_exit:
             return
 
         self.explosions = [e for e in self.explosions if e.update(dt)]
+        self._update_anim_states()
         for a in self.archers:
             a.update(dt)
 

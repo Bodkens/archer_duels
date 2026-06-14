@@ -10,13 +10,23 @@ BACKGROUND_IMAGE = "background.png"
 # Optional spritesheets / tilesets. Leave as None to use the built-in vector /
 # colour fallback. Drop a PNG into assets/ and point these at it to switch on
 # real artwork without touching any other code.
-PLAYER_SHEET = None        # e.g. "player_sheet.png"
-PLAYER_FRAME = (24, 40)    # (frame_w, frame_h) inside PLAYER_SHEET
-ENEMY_SHEET = None
-ENEMY_FRAME = (24, 40)
-ARROW_IMAGE = None         # single sprite, rotated to the flight angle
-BOMB_IMAGE = None
+PLAYER_SHEET = "player_sheet.png"
+PLAYER_FRAME = (40, 62)    # nominal cell size in the sheet; grid is derived by rounding
+ENEMY_SHEET = "enemy_sheet.png"
+ENEMY_FRAME = (40, 62)
+# Spritesheet rows are animation states (10 fps). Each row is one full animation:
+#   0 = idle + bow, 1 = idle + bomb, 2 = aiming + bow, 3 = aiming + bomb, 4 = moving
+SPRITE_ANIM_FPS = 10
+ARROW_IMAGE = "arrow.png"         # single sprite, rotated to the flight angle
+BOMB_IMAGE = "bomb.png"
 TILES_IMAGE = None         # one row of TILE-sized cells: [EMPTY, DIRT, STONE]
+
+# On-screen sizes for projectile artwork (only used when the *_IMAGE is set).
+# The archer body is 24x40 px; these boxes are deliberately smaller so the
+# bomb/arrow read as held items rather than dwarfing the players.
+BOMB_DRAW_SIZE = 18        # bomb image scaled to fit this box (px)
+ARROW_DRAW_SIZE = 34       # arrow image scaled to fit this box (px)
+HUD_ICON_SIZE = 26         # weapon icon shown next to the HUD turn label
 
 # --- Display ---
 SCREEN_W = 1280

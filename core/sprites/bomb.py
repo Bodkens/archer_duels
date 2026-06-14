@@ -5,7 +5,7 @@ import math
 import pygame
 
 from core import config as C
-from core.assets import load_image
+from core.assets import load_scaled
 from core.weapons import BOMB
 from core.weapons.projectile import Projectile
 
@@ -16,7 +16,9 @@ class Bomb(Projectile):
     def __init__(self, start, vel, weapon, shooter):
         super().__init__(start, vel, weapon, shooter)
         self.fuse = C.BOMB_FUSE
-        self._image = load_image(C.BOMB_IMAGE) if C.BOMB_IMAGE else None
+        # Scaled smaller than the archer so the bomb reads as a thrown item.
+        self._image = (load_scaled(C.BOMB_IMAGE, C.BOMB_DRAW_SIZE)
+                       if C.BOMB_IMAGE else None)
 
     # A bomb detonates on any impact, not just a direct hit.
     def on_archer_hit(self):

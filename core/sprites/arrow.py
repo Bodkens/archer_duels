@@ -5,7 +5,7 @@ import math
 import pygame
 
 from core import config as C
-from core.assets import load_image
+from core.assets import load_scaled
 from core.weapons import ARROW
 from core.weapons.projectile import Projectile
 
@@ -15,7 +15,8 @@ class Arrow(Projectile):
 
     def __init__(self, start, vel, weapon, shooter):
         super().__init__(start, vel, weapon, shooter)
-        self._image = load_image(C.ARROW_IMAGE) if C.ARROW_IMAGE else None
+        self._image = (load_scaled(C.ARROW_IMAGE, C.ARROW_DRAW_SIZE)
+                       if C.ARROW_IMAGE else None)
 
     # Arrow keeps the default outcomes ("archer" / "terrain") and has no fuse.
 

@@ -1,21 +1,29 @@
-"""Load a spritesheet image and slice it into animation frames."""
+"""Load a spritesheet image and slice it into a grid of animation frames.
+
+Each *row* of the grid is one animation; the columns are its frames. The grid
+size is derived from the nominal cell size by rounding (so a sheet that is, say,
+484x307 with a nominal 40x62 cell yields a clean 12x5 grid), and the actual cuts
+are evenly spaced sub-rectangles so rounding never drifts across the sheet."""
 
 from core.assets import load_image
 
 
 class SpriteSheet:
-    """Cuts a grid of equal-sized frames out of one image.
-
-    Frames are read left-to-right, top-to-bottom. ``subsurface`` returns a view
-    that shares pixels with the sheet, so we ``.copy()`` each frame to get an
-    independent surface."""
-
     def __init__(self, name, frame_w, frame_h):
         self.sheet = load_image(name)
-        self.frames = self._slice(frame_w, frame_h)
-
-    def _slice(self, fw, fh):
         w, h = self.sheet.get_size()
-        return [self.sheet.subsurface((x, y, fw, fh)).copy()
-                for y in range(0, h - fh + 1, fh)
-                for x in range(0, w - fw + 1, fw)]
+        self.cols = max(1, round(w / frame_w))
+        self.rows = self._slice(self.cols, max(1, round(h / frame_h)))
+
+    def _slice(self, cols, rows):
+        w, h = self.sheet.get_size()
+        grid = []
+        for r in range(rows):
+            y0, y1 = round(r * h / rows), round((r + 1) * h / rows)
+            line = []
+            for c in range(cols):
+                x0, x1 = round(c * w / cols), round((c + 1) * w / cols)
+                # subsurface shares pixels with the sheet; copy to detach.
+                line.append(self.sheet.subsurface((x0, y0, x1 - x0, y1 - y0)).copy())
+            grid.append(line)
+        return grid

@@ -3,8 +3,17 @@
 import pygame
 
 from core import config as C
-from core.weapons import aim_from_drag, velocity_from_angle_power, simulate_path
+from core.assets import load_scaled
+from core.weapons import aim_from_drag, velocity_from_angle_power, simulate_path, ARROW, BOMB
 from .fonts import font, center_text
+
+# Weapon kind -> configured artwork file (None => no icon, e.g. vector fallback).
+_WEAPON_ICON_FILES = {ARROW: C.ARROW_IMAGE, BOMB: C.BOMB_IMAGE}
+
+
+def _weapon_icon(kind):
+    name = _WEAPON_ICON_FILES.get(kind)
+    return load_scaled(name, C.HUD_ICON_SIZE) if name else None
 
 
 def _hp_bar(screen, archer, x, y, align_right=False):
@@ -28,8 +37,14 @@ def draw_hud(screen, p1, p2, current, message):
     slot = current.selected
     who = "AI" if current.is_ai else "Player"
     info = f"{who} turn  |  Random weapon: {slot.weapon.name}"
-    screen.blit(font(24, bold=True).render(info, True, C.COL_TEXT),
-                (C.SCREEN_W // 2 - 210, 24))
+    text = font(24, bold=True).render(info, True, C.COL_TEXT)
+    tx, ty = C.SCREEN_W // 2 - 210, 24
+    screen.blit(text, (tx, ty))
+    # Show the weapon's picture (bomb/arrow) right after the label.
+    icon = _weapon_icon(slot.weapon.kind)
+    if icon:
+        iy = ty + text.get_height() // 2 - icon.get_height() // 2
+        screen.blit(icon, (tx + text.get_width() + 8, iy))
 
     if message:
         center_text(screen, message, 22, C.SCREEN_H - 28, C.COL_TEXT_DIM)

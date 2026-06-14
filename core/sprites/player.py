@@ -7,8 +7,8 @@ from .sprite_sheet import SpriteSheet
 
 class Player(Archer):
     def __init__(self, x, y, facing=1):
-        frames = None
+        rows = None
         if C.PLAYER_SHEET:
-            frames = SpriteSheet(C.PLAYER_SHEET, *C.PLAYER_FRAME).frames
+            rows = SpriteSheet(C.PLAYER_SHEET, *C.PLAYER_FRAME).rows
         super().__init__(x, y, C.COL_PLAYER, is_ai=False, facing=facing,
-                         frames=frames)
+                         rows=rows)
